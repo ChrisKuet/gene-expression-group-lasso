@@ -13,16 +13,18 @@ Using the `bardet` gene-expression dataset, we compare:
 - **Lasso** (standard sparse regression)
 - **Group Lasso** (structured sparsity)
 
-The predictors naturally form **groups of related features (genes)**, making group lasso particularly suitable.
+The predictors naturally form **groups of related features (genes)**, making group lasso particularly suitable. 
+
+Full reproducible analysis: [gene_expression_group_lasso_analysis.Rmd](notebooks/gene_expression_group_lasso_analysis.Rmd)
 
 ---
 
 ## Key Results
 
 | Model        | Correlation | R²    | RMSE  |
-|-------------|------------|------|------|
-| Lasso        | *see results file* | *see results file* | *see results file* |
-| Group Lasso  | *see results file* | *see results file* | *see results file* |
+|-------------|------------:|------:|------:|
+| Lasso       | 0.75        | 0.454 | 0.013 |
+| Group Lasso | 0.86        | 0.716 | 0.007 |
 
 📄 Full results: [`results/tables/model_performance.csv`](results/tables/model_performance.csv)
 
