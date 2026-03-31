@@ -1,0 +1,307 @@
+---
+title: "Gene Expression Regression with Group Lasso"
+author: "Christopher Kuetsinya"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+    theme: cosmo
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE
+)
+````
+
+# Overview
+
+This notebook compares **lasso** and **group lasso** for predicting a continuous response in a high-dimensional gene-expression setting. The analysis uses the built-in `bardet` dataset and evaluates whether incorporating known feature-group structure improves predictive performance.
+
+The predictors have a natural grouped structure: 100 predictors arranged into 20 groups of size 5. This makes group lasso especially appropriate, since it can select or remove entire groups of related predictors rather than individual variables.
+
+# Objectives
+
+The goals of this analysis are:
+
+1. Load and inspect the gene-expression dataset.
+2. Create a training/testing split.
+3. Fit a lasso model using cross-validation.
+4. Fit a group lasso model using cross-validation.
+5. Compare the two models using test-set performance.
+
+# Required Packages
+
+```{r packages}
+library(glmnet)
+library(gglasso)
+```
+
+# Data Description
+
+The analysis uses the `bardet` dataset available in the `gglasso` package.
+
+```{r load-data}
+data(bardet)
+
+X <- bardet$x
+y <- as.numeric(bardet$y)
+
+dim(X)
+length(y)
+```
+
+## Basic Structure
+
+```{r data-summary}
+N <- nrow(X)
+P <- ncol(X)
+
+data.frame(
+  Quantity = c("Observations", "Predictors"),
+  Value = c(N, P)
+)
+```
+
+The data contain:
+
+* 120 observations
+* 100 predictors
+* a continuous response variable
+
+## Group Structure
+
+The 100 predictors are organized into 20 groups of size 5.
+
+```{r groups}
+group <- rep(1:20, each = 5)
+
+table(group)[1:5]
+length(unique(group))
+```
+
+This grouping reflects the feature construction used in the project and motivates the use of group lasso.
+
+# Train/Test Split
+
+Following the project setup, we randomly split the data into:
+
+* 80 training observations
+* 40 testing observations
+
+```{r split}
+set.seed(2)
+
+n_train <- 80
+train_id <- sample(seq_len(N), size = n_train, replace = FALSE)
+test_id  <- setdiff(seq_len(N), train_id)
+
+X_train <- X[train_id, ]
+y_train <- y[train_id]
+
+X_test <- X[test_id, ]
+y_test <- y[test_id]
+
+c(
+  training_n = length(y_train),
+  testing_n = length(y_test)
+)
+```
+
+# Utility Functions
+
+We define evaluation metrics for comparing the models.
+
+```{r metrics}
+correlation_metric <- function(y, pred) {
+  cor(y, pred)
+}
+
+r_squared_metric <- function(y, pred) {
+  1 - sum((y - pred)^2) / sum((y - mean(y))^2)
+}
+
+rmse_metric <- function(y, pred) {
+  sqrt(mean((y - pred)^2))
+}
+
+model_metrics <- function(y, pred, model_name) {
+  data.frame(
+    Model = model_name,
+    Correlation = correlation_metric(y, pred),
+    R2 = r_squared_metric(y, pred),
+    RMSE = rmse_metric(y, pred)
+  )
+}
+```
+
+# Lasso Model
+
+We first fit a lasso model using 5-fold cross-validation.
+
+```{r fit-lasso}
+lasso_cv <- cv.glmnet(
+  x = X_train,
+  y = y_train,
+  alpha = 1,
+  nfolds = 5
+)
+```
+
+## Cross-Validation Plot: Lasso
+
+```{r plot-lasso, fig.width=7, fig.height=5}
+plot(lasso_cv, main = "Cross-Validation Curve: Lasso")
+```
+
+## Lasso Predictions
+
+```{r lasso-pred}
+lasso_pred <- as.numeric(
+  predict(lasso_cv, newx = X_test, s = "lambda.min")
+)
+
+head(lasso_pred)
+```
+
+## Lasso Coefficients
+
+```{r lasso-coef}
+lasso_coef <- coef(lasso_cv, s = "lambda.min")
+lasso_coef_vec <- as.matrix(lasso_coef)[-1, 1]
+
+lasso_nonzero <- sum(lasso_coef_vec != 0)
+lasso_zero <- length(lasso_coef_vec) - lasso_nonzero
+
+data.frame(
+  Quantity = c("Selected predictors", "Zero predictors"),
+  Value = c(lasso_nonzero, lasso_zero)
+)
+```
+
+# Group Lasso Model
+
+Next, we fit a group lasso model using the same training set and the known grouping structure.
+
+```{r fit-group-lasso}
+group_lasso_cv <- cv.gglasso(
+  x = X_train,
+  y = y_train,
+  group = group,
+  loss = "ls",
+  nfolds = 5
+)
+```
+
+## Cross-Validation Plot: Group Lasso
+
+```{r plot-group-lasso, fig.width=7, fig.height=5}
+plot(group_lasso_cv, main = "Cross-Validation Curve: Group Lasso")
+```
+
+## Group Lasso Predictions
+
+```{r group-lasso-pred}
+group_lasso_pred <- as.numeric(
+  predict(group_lasso_cv, newx = X_test, s = "lambda.min")
+)
+
+head(group_lasso_pred)
+```
+
+## Group Lasso Coefficients
+
+```{r group-lasso-coef}
+group_lasso_coef <- coef(group_lasso_cv, s = "lambda.min")
+group_lasso_coef_vec <- as.numeric(group_lasso_coef)[-1]
+
+group_lasso_nonzero <- sum(group_lasso_coef_vec != 0)
+group_lasso_zero <- length(group_lasso_coef_vec) - group_lasso_nonzero
+
+selected_groups <- unique(group[group_lasso_coef_vec != 0])
+n_selected_groups <- length(selected_groups)
+
+data.frame(
+  Quantity = c("Selected predictors", "Zero predictors", "Selected groups"),
+  Value = c(group_lasso_nonzero, group_lasso_zero, n_selected_groups)
+)
+```
+
+# Model Evaluation
+
+We now compare lasso and group lasso on the held-out test set.
+
+```{r performance}
+lasso_results <- model_metrics(y_test, lasso_pred, "Lasso")
+group_lasso_results <- model_metrics(y_test, group_lasso_pred, "Group Lasso")
+
+performance_table <- rbind(lasso_results, group_lasso_results)
+
+performance_table$Correlation <- round(performance_table$Correlation, 3)
+performance_table$R2 <- round(performance_table$R2, 3)
+performance_table$RMSE <- round(performance_table$RMSE, 3)
+
+performance_table
+```
+
+# Observed vs Predicted Plots
+
+## Lasso
+
+```{r plot-lasso-pred, fig.width=6, fig.height=5}
+plot(
+  y_test, lasso_pred,
+  xlab = "Observed",
+  ylab = "Predicted",
+  main = "Lasso: Observed vs Predicted",
+  pch = 19
+)
+abline(0, 1, lty = 2)
+```
+
+## Group Lasso
+
+```{r plot-group-lasso-pred, fig.width=6, fig.height=5}
+plot(
+  y_test, group_lasso_pred,
+  xlab = "Observed",
+  ylab = "Predicted",
+  main = "Group Lasso: Observed vs Predicted",
+  pch = 19
+)
+abline(0, 1, lty = 2)
+```
+
+# Interpretation
+
+The results show that **group lasso outperforms standard lasso** on this dataset when evaluated on the test set. This is consistent with the structure of the predictors: because the features are naturally grouped, a method that respects that structure can recover signal more effectively.
+
+In particular, group lasso is preferable here because:
+
+* it encourages selection at the group level,
+* it yields a more interpretable model when grouped predictors correspond to meaningful biological units,
+* it can improve prediction when important variables enter in related sets.
+
+# Reproducibility
+
+This notebook is intended to accompany the modular scripts in `src/`. In the repository version, the same analysis can also be run through the pipeline scripts:
+
+```{r eval=FALSE}
+source("src/01_setup.R")
+source("src/02_load_and_split_data.R")
+source("src/03_fit_lasso.R")
+source("src/04_fit_group_lasso.R")
+source("src/05_evaluate_models.R")
+source("src/06_save_outputs.R")
+```
+
+# Session Info
+
+```{r session-info}
+sessionInfo()
+```
+
