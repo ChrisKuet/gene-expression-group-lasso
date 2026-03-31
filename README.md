@@ -1,51 +1,139 @@
 # Gene Expression Regression with Group Lasso
 
-Structured sparse regression for high-dimensional gene expression data using lasso and group lasso in R.
+Structured sparse regression for high-dimensional gene expression data using **lasso** and **group lasso** in R.
 
 ---
 
 ## Overview
 
-This project investigates the use of structured sparsity methods for predicting gene expression levels in a high-dimensional setting. The dataset consists of 120 samples and 100 predictors, where features are naturally grouped into 20 genes with 5 basis-expanded variables per gene.
+This project investigates whether incorporating **known feature group structure** improves predictive performance in high-dimensional regression.
 
-We compare standard lasso and group lasso models to evaluate how incorporating known feature group structure impacts predictive performance. Results show that group lasso achieves superior performance by selecting relevant groups of predictors rather than individual variables.
+Using the `bardet` gene-expression dataset, we compare:
 
----
+- **Lasso** (standard sparse regression)
+- **Group Lasso** (structured sparsity)
 
-## Key Features
-
-- High-dimensional regression with grouped predictors  
-- Comparison of **lasso vs. group lasso**  
-- Cross-validation for tuning parameter selection  
-- Model evaluation using **correlation, R², and RMSE**  
-- Fully reproducible analysis in R  
+The predictors naturally form **groups of related features (genes)**, making group lasso particularly suitable.
 
 ---
 
-## Results Summary
+## Key Results
 
-| Model       | Correlation | R²    | RMSE  |
-|-------------|-------------|-------|-------|
-| Lasso       | 0.75        | 0.454 | 0.013 |
-| Group Lasso | 0.86        | 0.716 | 0.007 |
+| Model        | Correlation | R²    | RMSE  |
+|-------------|------------|------|------|
+| Lasso        | *see results file* | *see results file* | *see results file* |
+| Group Lasso  | *see results file* | *see results file* | *see results file* |
 
-Group lasso outperforms lasso, highlighting the importance of incorporating known grouping structure in high-dimensional data.
+📄 Full results: [`results/tables/model_performance.csv`](results/tables/model_performance.csv)
+
+**Conclusion:**  
+Group lasso outperforms standard lasso by leveraging the underlying group structure of predictors, leading to improved predictive accuracy and interpretability.
 
 ---
 
-## Methods
+## Visual Results
 
-- **Lasso** (L1 regularization via `glmnet`)
-- **Group Lasso** (grouped L2 penalty via `gglasso`)
-- 5-fold cross-validation for optimal tuning parameter selection
-- Train/test split (80/40) for out-of-sample evaluation
+### Lasso Cross-Validation
+![Lasso CV](results/figures/cv_lasso.png)
+
+### Group Lasso Cross-Validation
+![Group Lasso CV](results/figures/cv_group_lasso.png)
+
+---
+
+## Why This Matters
+
+High-dimensional biological data (e.g., gene expression) often contain **structured predictors**:
+
+- Genes are represented by multiple correlated measurements  
+- Standard methods (lasso) treat predictors independently  
+- This can lead to unstable or less interpretable models  
+
+**Group lasso improves:**
+- Interpretability (selects entire gene groups)
+- Statistical efficiency
+- Predictive performance in structured settings
+
+---
+
+## Methodology
+
+1. Load gene-expression dataset (`bardet`)
+2. Split data into:
+   - 80 training observations
+   - 40 testing observations
+3. Fit models using **5-fold cross-validation**
+   - `glmnet` (lasso)
+   - `gglasso` (group lasso)
+4. Evaluate performance on test set using:
+   - Correlation
+   - R²
+   - RMSE
 
 ---
 
 ## Repository Structure
 
-```text
-src/        # Model training and evaluation scripts  
-notebooks/  # R Markdown analysis  
-results/    # Tables and figures  
-report/     # Original project report  
+```
+
+gene-expression-group-lasso/
+├── src/            # Modular analysis scripts
+├── notebooks/      # Reproducible R Markdown analysis
+├── results/        # Tables, figures, and model outputs
+├── data/           # Data documentation
+├── README.md
+
+````
+
+---
+
+## Reproducibility
+
+Run the full analysis with one command:
+
+```r
+source("src/run_analysis.R")
+````
+
+This will:
+
+* fit both models
+* generate plots
+* save results to `results/`
+
+---
+
+## Installation
+
+Install required R packages:
+
+```r
+install.packages(c("glmnet", "gglasso"))
+```
+
+---
+
+## Skills Demonstrated
+
+* High-dimensional regression
+* Sparse modeling (Lasso, Group Lasso)
+* Structured sparsity
+* Cross-validation and hyperparameter tuning
+* Model evaluation (RMSE, R², correlation)
+* Reproducible research pipeline in R
+
+---
+
+## Author
+
+**Christopher Kuetsinya** \
+PhD Student in Statistics \
+Bowling Green State University
+
+---
+
+
+* Dataset: `bardet` (available via R package)
+* Fully reproducible — no external data required
+
+````
